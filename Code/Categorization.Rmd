@@ -4,7 +4,83 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+setwd("./Data")
+
+# Load the required packages
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(stargazer)
+
+# Load the data
+amazon_reviews <- readxl::read_xlsx("amazon_reviews.xlsx")
 ```
 
-## In the 
+## Lets start by looking at the data
 
+
+# made a distincation between Hellmond and Knorr product
+
+
+
+Knorr analysis
+```{r} 
+head(amazon_reviews)
+# rename all the columns to better names
+colnames(amazon_reviews) <- c("Retailer", "EAN_UPC", "Product_name", "Date", "Text", "Rating")
+# Summary of the data 
+# I will look at the unique product titles
+unique(amazon_reviews$EAN_UPC)
+# A data frame with only the unique products EAN and its titles
+######################################
+## TO DO: Only getting Knorr product #
+######################################
+unique_products <- amazon_reviews %>% select(EAN_UPC, Product_name) %>% distinct()
+# as I can see the products are in german, so I will get the names (and associated categories) from the german Knorr Germany website.
+
+# I have the categories of KNORR themselves from the german website scraped.
+knorr_categories <- readxl::read_xlsx("knorr_categories.xlsx")
+# I will merge the unique products with the categories
+# however, the product_name and the name in the categories are not in line, so I need to do an match analysis
+# I will use the stringdist package to do this
+library(stringdist)
+
+# I will use the function stringdistmatrix to get the distance between the product names
+distance_matrix <- stringdistmatrix(unique_products$Product_name, knorr_categories$name, method = "lv")
+
+# Find the index of the minimum distance for each product
+min_distance_indices <- apply(distance_matrix, 1, which.min)
+
+# Match these indices to category names
+closest_categories <- knorr_categories$Category[min_distance_indices]
+
+# If you want to add these as a new column to your unique_products dataframe:
+unique_products$Closest_Category <- closest_categories
+
+# Now unique_products has a new column 'Closest_Category' with the name of the closest matching category
+
+# unique categories in general
+knorr_unique_categories <- unique(knorr_categories$Category)
+```
+
+## Now I will look at the ratings
+
+```{r}
+# look at the brands
+head(amazon_reviews$Product_name)
+
+# we need a function that checks if KNORR is in the product name and make it a brand column
+amazon_reviews$Brand <- ifelse(grepl("Knorr", amazon_reviews$Product_name), "Knorr", "Other")
+
+head(amazon_reviews$Brand)
+
+# lets look at the propotion of knorr vs others
+prop.table(table(amazon_reviews$Brand))
+
+# The above code block looks at the brands in the "Product_name" column of the "amazon_reviews" data frame.
+# It creates a new column called "Brand" based on whether the product name contains "Knorr" or not.
+# Finally, it calculates the proportion of "Knorr" brands compared to other brands in the data frame.
+
+```
