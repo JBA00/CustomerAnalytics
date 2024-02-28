@@ -38,6 +38,8 @@ unique(amazon_reviews$EAN_UPC)
 ## TO DO: Only getting Knorr product #
 ######################################
 unique_products <- amazon_reviews %>% select(EAN_UPC, Product_name) %>% distinct()
+#save a dataframe in the data folder
+write.csv(unique_products, "unique_products.csv")
 # as I can see the products are in german, so I will get the names (and associated categories) from the german Knorr Germany website.
 
 # I have the categories of KNORR themselves from the german website scraped.
@@ -75,6 +77,9 @@ head(amazon_reviews$Product_name)
 amazon_reviews$Brand <- ifelse(grepl("Knorr", amazon_reviews$Product_name), "Knorr", "Other")
 
 head(amazon_reviews$Brand)
+
+# now merge the brand in amazon review with the unique products
+unique_products <- merge(unique_products, amazon_reviews, by = "EAN_UPC")
 
 # lets look at the propotion of knorr vs others
 prop.table(table(amazon_reviews$Brand))
