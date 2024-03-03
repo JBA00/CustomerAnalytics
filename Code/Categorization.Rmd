@@ -89,3 +89,22 @@ prop.table(table(amazon_reviews$Brand))
 # Finally, it calculates the proportion of "Knorr" brands compared to other brands in the data frame.
 
 ```
+
+
+## Now I will look at adding ChatGPT of each category
+
+```{r}
+#import amazon_reviews
+#amazon_reviews <- readxl::read_xlsx("amazon_reviews.xlsx")
+colnames(amazon_reviews) <- c("Retailer", "EAN_UPC", "Product_name", "Date", "Text", "Rating")
+# import unique_products
+unique_products <- read.csv("unique_products_knorr_GPT.csv")
+
+# lets merge them toghether
+amazon_reviews <- merge(amazon_reviews, unique_products, by = "EAN_UPC")
+
+# make a histogram of each category
+ggplot(amazon_reviews, aes(x = Closest_Category)) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(amazon_reviews, aes(x = GPT_estimated)) + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
