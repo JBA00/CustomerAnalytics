@@ -1,0 +1,289 @@
+---
+title: "Untitled"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load the libraries
+```{r}
+# clear the environment
+rm(list = ls())
+
+# load the required packages
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(DT)
+library(stringr)
+
+```
+
+# Load the Amazon data
+```{r}
+# read the data from xlsx file:
+Amazon <- readxl::read_xlsx("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/amazon_reviews_USE_THIS.xlsx")
+#view(Amazon)
+
+#check the column names
+colnames(Amazon)
+
+# rename the columns:
+colnames(Amazon) <- c("Retailer", "EAN_UPC", "Product_name", "Date", "Text", "Rating")
+
+#change EAN_UPC to numeric
+Amazon$EAN_UPC <- as.numeric(Amazon$EAN_UPC)
+
+datatable(head(Amazon, 100)) # Interactive table view of the first 100 rows
+
+summary(Amazon)
+#Count unique Product_name in Amazon
+Amazon %>%
+  count(Product_name, sort = TRUE)
+
+Amazon %>%
+    count(EAN_UPC, sort = TRUE)
+
+#Search for "KNORR" in Product_name, and switch every instance to capital case
+Amazon <- Amazon %>%
+    mutate(Product_name = ifelse(str_detect(Product_name, "KNORR"), "Knorr", Product_name))
+
+datatable(head(Amazon, 100)) # Interactive table view of the first 100 rows
+
+
+#search for "Hellmann's" in Product_name and corresponding EAN_UPC
+Amazon %>%
+    filter(str_detect(Product_name, "Hellmann's")) %>%
+    select(EAN_UPC, Product_name) %>%
+    distinct() %>%
+    datatable()
+
+#Delete all rows with missing values for EAN_UPC
+Amazon <- Amazon %>%
+    filter(!is.na(EAN_UPC))
+
+
+#In Amazon data delete duplicates for Text column 
+Amazon <- Amazon %>%
+    distinct(Text, .keep_all = TRUE)
+
+Amazon %>%
+    count(Text) %>%
+    filter(n > 1) %>%
+    datatable()
+
+
+# Create Brand column for Hellmans and Knorr
+Amazon <- Amazon %>%
+  mutate(Brand = case_when(
+    str_detect(str_to_lower(Product_name), "knorr") ~ "Knorr",
+    str_detect(str_to_lower(Product_name), "hellmann's") ~ "Hellmann's",
+    TRUE ~ NA_character_
+  ))
+
+Amazon %>%
+  group_by(Brand) %>%
+    count(Brand, sort = TRUE)
+
+Amazon %>%
+    group_by(Product_name) %>%
+    count(Product_name, sort = TRUE)
+
+#save the Amazon data to csv
+write.csv(Amazon, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon.csv")
+
+#load the Amazon data from csv
+Amazon <- read.csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon.csv")
+
+
+
+```
+
+
+# Load the Knorr categories data from ChatGPT
+```{r}
+# read the csv file and make sure ";" is the delimiter:
+Knorr_categories <- read_csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/unique_products_knorr_GPT.csv", show_col_types = FALSE)
+view(Knorr_categories)
+
+
+
+#delete all the rows from Knorr_categories that have only Knorr in Product_name column
+Knorr_categories <- Knorr_categories %>%
+    filter(Product_name != "Knorr")
+
+view(Knorr_categories)
+summary(Knorr_categories)
+
+# delete Closest_category column
+Knorr_categories <- Knorr_categories %>%
+    select(-Closest_Category, -Unnamed: 0)
+
+#change EAN_UPC to numeric
+Knorr_categories$EAN_UPC <- as.numeric(Knorr_categories$EAN_UPC)
+
+na_rows_count <- Knorr_categories %>%
+  filter(if_any(everything(), is.na)) %>%
+  nrow()
+
+na_rows_count
+
+#delete the EAN_UPC rows which are "invalid Number" --> Some data loss here but it's necessary to merge the data
+Knorr_categories <- Knorr_categories %>%
+    filter(!is.na(EAN_UPC))
+View(Knorr_categories)
+
+# delete duplicates for EAN_UPC
+Knorr_categories <- Knorr_categories %>%
+    distinct(EAN_UPC, .keep_all = TRUE)
+
+# depete rows where Product_name is "Knorr"
+Knorr_categories <- Knorr_categories %>%
+    filter(Product_name != "Knorr")
+
+
+
+#delete duplicates for product_name
+Knorr_categories <- Knorr_categories %>%
+    distinct(Product_name, .keep_all = TRUE)
+
+#count distinct EAN_UPC
+Knorr_categories %>%
+    count(EAN_UPC, sort = TRUE)
+
+colnames(Knorr_categories)
+
+#Remove unnamed:0 column
+Knorr_categories <- Knorr_categories %>%
+    select(-c(1))
+
+write.csv(Knorr_categories, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Knorr_categories.csv")
+
+Knorr_categories <- read.csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Knorr_categories.csv")
+
+
+```        
+
+
+# Hellmanns categories data
+```{r}
+csv_data <- "EAN_UPC,Product_name,Category
+8720182334657,\"Hellmann's Ketjap\",\"BBQ and Grilling Sauces\"
+8720182334640,\"Hellmann's BBQ Sauce intensive und würzige Grillsauce mit kräftigem Geschmack 250 ml 1 Stück\",\"BBQ and Grilling Sauces\"
+8720182301789,\"Hellmann's Cheese Style Sauce leckere Grillsauce perfekt zu Burger und Nachos 8x 250ml\",\"BBQ and Grilling Sauces\"
+8720182301765,\"Hellmann's\",\"Miscellaneous\"
+8720182301734,\"Hellmann's Cheese Style Sauce leckere Grillsauce perfekt zu Burger und Nachos 250 ml 1 Stück\",\"BBQ and Grilling Sauces\"
+8720182301727,\"Hellmann's Garlic & Herb Sauce leckere Grillsauce perfekt zu Fleisch, Fisch und Gemüse 250 ml 1 Stück\",\"BBQ and Grilling Sauces\"
+8720182297778,\"Hellmann's Hot Mexican Sauce 250ml 250ml\",\"Specialty Sauces and Flavors\"
+8720182283511,\"Hellmann's Lime & Avocado Style Sauce perfekt zu Bowls und Sandwiches auch als leckere Grillsauce 250 ml\",\"Specialty Sauces and Flavors\"
+8720182269195,\"Hellmann's Vegan Mayo Baconnaise leckere Mayonnaise zum Dippen und Verfeinern 270 gr 6 Stück\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8720182269188,\"Hellmann's Vegan Mayo Garlic leckere Mayonnaise zum Dippen und Verfeinern 270 gr\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8720182069269,\"Hellmann's Tomato Ketchup Zuckerreduziert vegane Grillsoße im Squeezer mit vollem Tomatengeschmack 430 ml\",\"Ketchup and Tomato Products\"
+8720182069252,\"Hellmann's Tomato Ketchup Zuckerreduziert vegane Grillsoße im Squeezer mit vollem Tomatengeschmack 8x 430 ml\",\"Ketchup and Tomato Products\"
+8717163784273,\"Hellmann's REAL Salat Mayo leckere Salat Mayonnaise mit Freilandeiern 210 ml 1 Stück\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8714100685501,\"Hellmann's Tomato Ketchup (fruchtig, tomatiger Geschmack) 1er Pack (1 x 5 kg)\",\"Ketchup and Tomato Products\"
+8714100339831,\"Hellmann's Ketchup Portionsbeutel (fruchtig tomatiger Geschmack) 1er Pack (200 x 10ml)\",\"Ketchup and Tomato Products\"
+8712423027206,\"Hellmann's BBQ Sauce Original Grillsauce mit typisch süßlich-rauchigem Geschmack Klassische amerikanisches, 8er Pack (8 x 250 ml)\",\"BBQ and Grilling Sauces\"
+8712100839139,\"Unilever Deutschland Hellmann's Real Mayonnaise 430ml\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8712100839023,\"Hellmann's Ketchup, 430 ml\",\"Ketchup and Tomato Products\"
+8711327405028,\"Hellmann's Sauce mit Knoblauchnote ideal zum Dippen und Verfeinern beim Barbecue vegetarisch 8x 250 ml\",\"Specialty Sauces and Flavors\"
+8711327405011,\"Hellmann's Sauce mit Knoblauchnote ideal zum Dippen und Verfeinern beim Barbecue vegetarisch 250 ml\",\"Specialty Sauces and Flavors\"
+8711200478187,\"Hellmann's Real Mayonnaise ideal zum Verfeinern Mayo mit Freilandeiern 250 ml\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8711200470495,\"Hellmann's BBQ Marinade (mit typisch süßlichem, rauchigem Geschmack) 1er Pack (1 x 4,8 kg)\",\"BBQ and Grilling Sauces\"
+8711200424979,\"Hellmann's Sauce mit Chili scharfe Sauce ideal zum Dippen und Verfeinern 8x 250 ml\",\"Specialty Sauces and Flavors\"
+8711200424962,\"Hellmann's Sauce mit Chili scharfe Sauce ideal zum Dippen und Verfeinern 250 ml\",\"Specialty Sauces and Flavors\"
+8710604791076,\"Hellmann's Vegan Mayo leckere Mayonnaise zum Dippen und Verfeinern 6x 270 g\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8710604791069,\"Hellmann's Vegan Mayo leckere Mayonnaise zum Dippen und Verfeinern 270 g\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8710522920251,\"Hellmann's Tomato Ketchup leckere Grillsauce ideal zum Verfeinern aus nachhaltig angebauten Tomaten 430 ml\",\"Ketchup and Tomato Products\"
+8710447949542,\"Hellmann's Real Mayonnaise Mini Glas (perfekte Serviergröße im Gastraum) 1er Pack (80 x 33 ml)\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+8710447948606,\"Hellmann's Tomato Ketchup Mini Glas (perfekte Serviergröße im Gastraum) 1er Pack (80 x 33ml)\",\"Ketchup and Tomato Products\"
+8710447948590,\"Hellmann's Senf mittelscharf Mini Glas (perfekte Serviergröße im Gastraum) 1er Pack (80 x 33 ml)\",\"Mustard and Condiments\"
+8710447846612,\"Hellmann's Deli Style Senfsauce (milder Geschmack) 8er Pack (8 x 250 ml)\",\"Mustard and Condiments\"
+8710447845110,\"Hellmann's Real Mayonnaise (mit Rapsöl, ideal als Pommes und Burger Sauce und für Salat Dressings), 1er Pack (1 x 5 l)\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+NA,\"Hellmann's Vegane Mayo Alternative zu Mayonnaise, Mayo ohne Ei, 1er Pack (1 x 2.5 kg)\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+NA,\"Hellmann's REAL Salatmayo leckere Salatmayonnaise mit Freilandeiern 210 ml 6 Stück\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+NA,\"Hellmann's Real Mayonnaise (mit Rapsöl, ideal als Pommes und Burger Sauce und für Salat Dressings) 2er Pack (2 x 430ml)\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+NA,\"Hellmann's Real Mayonnaise Portionsbeutel (mit Eiern aus Freilandhaltung) 1er Pack (198 x 10 ml)\",\"Mayonnaise, Mayo Alternatives, and Salad Dressings\"
+NA,\"Hellmann's Yellow Mustard Portionsbeutel (perfekte Serviergröße) 1er Pack (198 x 10 ml)\",\"Mustard and Condiments\"
+NA,\"Hellmann's American Style Yellow Mustard Senf (Klassisch mild, würziger Senfgeschmack) 8er Pack (8 x 260 g)\",\"Mustard and Condiments\""
+
+
+# Assuming csv_data contains the CSV string provided above
+Hellmanns_categories <- read.csv(text = csv_data, header = TRUE, stringsAsFactors = FALSE)
+
+# Rename the columns
+colnames(Hellmanns_categories) <- c("EAN_UPC", "Product_name", "GPT_estimated")
+
+datatable(head(Hellmanns_categories, 100))
+
+Hellmanns_categories$EAN_UPC <- as.numeric(Hellmanns_categories$EAN_UPC)
+
+#unique EAN_UPC and product names in Hellmans_categories
+Hellmanns_categories %>%
+    group_by(EAN_UPC) %>%
+    count(EAN_UPC, Product_name, GPT_estimated, sort = TRUE) %>%
+    datatable()
+#save the Hellmanns_categories data to csv
+write.csv(Hellmanns_categories, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Hellmanns_categories.csv")
+
+#load the Hellmanns_categories data from csv
+Hellmanns_categories <- read.csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Hellmanns_categories.csv")
+
+```
+
+#Binding rows for Knorr and Hellmans categories
+```{r}
+colnames(Knorr_categories)
+
+Knorr_categories <- Knorr_categories %>%
+    select(EAN_UPC, Product_name, GPT_estimated)
+
+colnames(Hellmanns_categories)
+
+Hellmanns_categories <- Hellmanns_categories %>%
+    select(EAN_UPC, Product_name, GPT_estimated)
+
+#Union the two datasets:
+combined_categories <- bind_rows(Knorr_categories, Hellmanns_categories)
+View(combined_categories)
+
+#check for unique EAN_UPC
+combined_categories %>%
+    group_by(EAN_UPC) %>%
+    count(EAN_UPC, sort = TRUE)
+
+#remove missing values
+combined_categories <- combined_categories %>%
+    filter(!is.na(EAN_UPC))
+```
+
+#Merging the Amazon data with the combined categories
+```{r}
+#View amazon data interactive table 
+datatable(head(Amazon, 100))
+colnames(Amazon)
+
+Amazon <- Amazon %>%
+    select(Retailer, EAN_UPC, Product_name, Date, Text, Rating, Brand)
+
+# merge the Amazon data with the combined categories on EAN_UPC:
+Amazon_categories_final <- Amazon %>%
+    left_join(combined_categories, by = "EAN_UPC")
+
+Amazon_categories_final %>%
+    group_by(Brand,GPT_estimated) %>%
+    count(GPT_estimated, sort = TRUE) %>%
+    datatable()
+
+summary(Amazon_categories_final)
+
+#save the Amazon_categories_final data to csv
+write.csv(Amazon_categories_final, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
+
+#load the Amazon_categories_final data from csv
+Amazon_categories_final <- read.csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
+
+
+```
