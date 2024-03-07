@@ -18,6 +18,7 @@ library(ggplot2)
 library(tidyverse)
 library(DT)
 library(stringr)
+library(readxl)
 
 ```
 
@@ -283,7 +284,94 @@ summary(Amazon_categories_final)
 write.csv(Amazon_categories_final, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
 
 #load the Amazon_categories_final data from csv
-Amazon_categories_final <- read.csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
+Amazon_categories_final <- read.csv("C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/Amazon_categories_final.csv")
 
 
 ```
+
+
+# analysis about the categories
+```{r}
+
+# lets make a dictionary which items needs to be change to which name
+# and then change the names in the dataframe
+
+# get all the current categories
+cat <- Amazon_categories_final %>%
+    filter(Brand == "Knorr") %>%
+    count(GPT_estimated, sort = TRUE)
+
+ # Import knorr category cleaned
+knorr_cat <- read_xlsx("C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/Knorr_categories_cleaned.xlsx")
+
+
+# merge GPT_estimated_cleaned with the Amazon_categories_final GPT_estimated:
+Amazon_categories_final <- Amazon_categories_final %>%
+    left_join(knorr_cat, by = "GPT_estimated")
+
+
+# if brand is hellmans then change the GPT_estimated_cleaned to the one in GPT_estimate
+Amazon_categories_final <- Amazon_categories_final %>%
+    mutate(GPT_estimated_cleaned = ifelse(Brand == "Hellmann's", GPT_estimated, GPT_estimated_cleaned))
+
+# lets see how GPT_estimated_cleaned looks
+Amazon_categories_final %>%
+    group_by(Brand, GPT_estimated_cleaned) %>%
+    count(GPT_estimated_cleaned, sort = TRUE) %>%
+    datatable()
+
+Amazon_categories_final %>%
+    group_by(Brand, GPT_estimated_cleaned) %>%
+    count(GPT_estimated_cleaned, sort = TRUE) %>%
+    ggplot(aes(x = GPT_estimated_cleaned, y = n, fill = Brand)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    labs(title = "Number of products in each category", x = "Category", y = "Number of products", fill = "Brand")
+
+```
+
+
+# lets gather some insight about the categories
+```{r}
+# lets see how the ratings are distributed over the categories
+Amazon_categories_final %>%
+    group_by(GPT_estimated_cleaned) %>%
+    summarise(mean_rating = mean(Rating, na.rm = TRUE), n = n()) %>%
+    arrange(desc(mean_rating)) %>%
+    ggplot(aes(x = GPT_estimated_cleaned, y = mean_rating, fill = n)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    labs(title = "Mean rating per category", x = "Category", y = "Mean rating", fill = "Number of products")
+
+# lets see how many 1 star rating and 5 star rating there are, per category based on adjusted by amount of reviews
+Amazon_categories_final %>% 
+    filter(Brand == "Knorr") %>%
+    group_by(GPT_estimated_cleaned, Rating) %>%
+    count(Rating, sort = TRUE) %>%
+    ggplot(aes(x = GPT_estimated_cleaned, y = n, fill = as.factor(Rating))) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    labs(title = "Number of 1 and 5 star ratings per category", x = "Category", y = "Number of ratings", fill = "Rating")
+
+# intersting categories from Knorr are:
+# (1) Snacks & Fertiggenrichte; This product has A lot of 1 star review, compared to other categories. compare Suppen.
+# (2) Fix Produkte; This product has a lot of 4/5 star reviews, compared to other categories. What are they doing good?
+# (3) Suppen; This category has a low amount of 1 star review (not in the curve we are use to), interesting to see what people are saying there.
+
+Amazon_categories_final %>% 
+    filter(Brand == "Hellmann's") %>%
+    group_by(GPT_estimated_cleaned, Rating) %>%
+    count(Rating, sort = TRUE) %>%
+    ggplot(aes(x = GPT_estimated_cleaned, y = n, fill = as.factor(Rating))) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    labs(title = "Number of 1 and 5 star ratings per category", x = "Category", y = "Number of ratings", fill = "Rating")
+
+# Interesting categories in Hellmans are:
+################ Still to do, but noo clear winner in the information can be found #########
+```
+
