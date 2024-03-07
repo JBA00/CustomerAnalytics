@@ -281,7 +281,7 @@ Amazon_categories_final %>%
 summary(Amazon_categories_final)
 
 #save the Amazon_categories_final data to csv
-write.csv(Amazon_categories_final, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
+#write.csv(Amazon_categories_final, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
 
 #load the Amazon_categories_final data from csv
 Amazon_categories_final <- read.csv("C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/Amazon_categories_final.csv")
@@ -375,3 +375,13 @@ Amazon_categories_final %>%
 ################ Still to do, but noo clear winner in the information can be found #########
 ```
 
+```{r}
+setwd("./Data")
+
+# Save the final dataset
+write.csv(Amazon_categories_final, "Amazon_categories_final.csv")
+```
+
+```{r}
+
+```
