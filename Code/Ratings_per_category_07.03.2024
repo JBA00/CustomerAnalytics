@@ -1,0 +1,262 @@
+---
+title: "Untitled"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Customer reviews exploration on category level
+
+## Libraries and data
+    
+```{r}
+### Some notes on data:
+# It seems that Hellmanns categorues have to be less granular
+# Explore the categories where there is high variation in the share of 5 or 1 star ratings:
+## Might lead us to differences between product reviews 
+
+
+
+
+remove(list = ls())
+
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(tidyr)
+library(DT)
+
+AmazonReviews <- read_csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Amazon_categories_final_clean.csv")
+
+#interactive table for the first 100 rows
+datatable(AmazonReviews[1:100,])
+
+colnames(AmazonReviews)
+
+# delete GPT_estimated and ...1 column
+AmazonReviews <- AmazonReviews %>% select(-GPT_estimated)
+#remove first column
+AmazonReviews <- AmazonReviews %>% select(-...1)
+
+#change GPT_estimated_cleaned column to category 
+AmazonReviews <- AmazonReviews %>% rename(Category = GPT_estimated_cleaned)
+
+# Remove the NA values from Category column
+AmazonReviews <- AmazonReviews %>% filter(!is.na(Category))
+
+AmazonReviews$Fivestars <- as.numeric(AmazonReviews$Rating == 5)
+AmazonReviews$Onestar <- as.numeric(AmazonReviews$Rating == 1)
+AmazonReviews$Date <- as.Date(AmazonReviews$Date,format = "%d/%m/%Y")
+AmazonReviews$Month <- as.numeric(format(AmazonReviews$Date, "%m"))
+AmazonReviews$Year <- as.numeric(format(AmazonReviews$Date, "%Y"))
+
+# number of reviews per brand per year 
+AmazonReviews %>%
+  group_by(Brand, Year) %>%
+  summarise(n = n())
+
+# remove the rows where year is 2009,2011,2012 --> too few observations: messing up the plots
+AmazonReviews <- AmazonReviews %>%
+    filter(Year != 2009 & Year != 2011 & Year != 2012)
+```
+
+## Ratings across brands - averages, median, 5 stars and 1 star
+```{r}
+
+#Average Ratings across Categories barchart
+rating_summary <- AmazonReviews %>%
+  group_by(Brand) %>%
+  group_by(Category) %>%
+  summarize(
+    mean_rating = mean(Rating,na.rm=T),
+    median_rating = median(Rating,na.rm=T),
+    share_5stars = mean(Rating == 5,na.rm=T),
+    share_1star = mean(Rating == 1,na.rm=T)
+  )
+
+rating_summary <- rating_summary %>%
+  mutate(Category = factor(Category, levels = Category[order(mean_rating)]))
+
+# mean rating per category plot
+plot_mean_rating_per_category <-
+  ggplot(rating_summary, aes(x = Category, y = mean_rating)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Mean Rating per Category") +
+  xlab("Category") +
+  ylab("Mean Rating") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(
+  "plot_mean_rating_per_brand.png",
+  plot_mean_rating_per_brand,
+  width = 10,
+  height = 6
+)
+
+# Rating summary table with brand and category, mean, median, share of 5 stars and share of 1 star
+rating_summary1 <- AmazonReviews %>%
+  group_by(Brand, Category) %>%
+  summarize(
+    mean_rating = mean(Rating, na.rm = TRUE),
+    median_rating = median(Rating, na.rm = TRUE),
+    share_5stars = mean(Rating == 5, na.rm = TRUE),
+    share_1star = mean(Rating == 1, na.rm = TRUE),
+    .groups = 'drop' # This argument drops the grouping structure after summarizing
+  )
+
+# mean rating per category per brand plot
+plot_mean_rating_per_category_per_brand <-
+  ggplot(rating_summary1, aes(x = Category, y = mean_rating, fill = Brand)) + # Map 'fill' to 'Brand' for color coding
+  geom_bar(stat = "identity", position = "dodge") + # Remove the specific fill color to use brand-based coloring
+  labs(title = "Mean Rating per Category per Brand", x = "Category", y = "Mean Rating") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Brand, scales = "free_x") +
+  theme(legend.position = "none") # Keep this to remove any legend
+
+# Print the plot
+plot_mean_rating_per_category_per_brand
+
+ggsave(
+  "plot_mean_rating_per_category_per_brand.png",
+  plot_mean_rating_per_category_per_brand,
+  width = 10,
+  height = 6
+)
+
+# median rating per category per brand plot
+plot_median_rating_per_category_per_brand <-
+  ggplot(rating_summary1, aes(x = Category, y = median_rating, fill = Brand)) + # Map 'fill' to 'Brand' for color coding
+  geom_bar(stat = "identity", position = "dodge") + # Remove the specific fill color to use brand-based coloring
+  labs(title = "Median Rating per Category per Brand", x = "Category", y = "Median Rating") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Brand, scales = "free_x") +
+  theme(legend.position = "none") # Keep this to remove any legend
+
+ggsave(
+  "plot_median_rating_per_category_per_brand.png",
+  plot_median_rating_per_category_per_brand,
+  width = 10,
+  height = 6
+)
+
+# share of 5 stars per category per brand plot
+plot_share_5stars_per_category_per_brand <-
+  ggplot(rating_summary1, aes(x = Category, y = share_5stars, fill = Brand)) + # Map 'fill' to 'Brand' for color coding
+  geom_bar(stat = "identity", position = "dodge") + # Remove the specific fill color to use brand-based coloring
+  labs(title = "Share of 5 Stars per Category per Brand", x = "Category", y = "Share of 5 Stars") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Brand, scales = "free_x") +
+  theme(legend.position = "none") # Keep this to remove any legend
+
+ggsave(
+  "plot_share_5stars_per_category_per_brand.png",
+  plot_share_5stars_per_category_per_brand,
+  width = 10,
+  height = 6
+)
+
+# share of 1 star per category per brand plot
+plot_share_1star_per_category_per_brand <-
+  ggplot(rating_summary1, aes(x = Category, y = share_1star, fill = Brand)) + # Map 'fill' to 'Brand' for color coding
+  geom_bar(stat = "identity", position = "dodge") + # Remove the specific fill color to use brand-based coloring
+  labs(title = "Share of 1 Star per Category per Brand", x = "Category", y = "Share of 1 Star") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~ Brand, scales = "free_x") +
+  theme(legend.position = "none") # Keep this to remove any legend
+
+```
+
+## Changes in ratings over time
+```{r}
+
+plot_rating_evolution_per_brand <-
+  ggplot(AmazonReviews, aes(x = Date, y = Rating)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  facet_wrap(~ Brand, scales = "free_y", ncol = 2) +
+  labs(x = "Month", y = "Rating",
+       title = "Evolution of the Ratings over Time per Brand") +
+  theme_bw() +
+  scale_x_date(date_labels = "%Y", date_breaks = "24 months")
+ggsave(
+  "plot_rating_evolution_per_brand.png",
+  plot_rating_evolution_per_brand,
+  width = 10,
+  height = 6
+)
+
+# plot rating evolution per category per brand
+## Investigate 
+### 1) Hellmann's BBQ and Grilling Sauces 
+### 2) Knorr Naturlich Lecker! (N??)
+plot_rating_evolution_per_category_per_brand <-
+  ggplot(AmazonReviews, aes(x = Date, y = Rating)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  facet_grid(Category ~ Brand, scales = "free_y", space = "free") +
+  labs(x = "Month", y = "Rating",
+       title = "Evolution of the Ratings over Time per Category per Brand") +
+  theme_bw() +
+  scale_x_date(date_labels = "%Y", date_breaks = "24 months")
+
+ggsave("plot_rating_evolution_per_category_per_brand.png",
+       plot_rating_evolution_per_category_per_brand,
+       width = 10, height = 6)
+
+# Number of reviews per brand per category
+AmazonReviews %>%
+    group_by(Brand, Category) %>%
+    summarise(n = n())
+
+# Five star rating evolution per category per brand
+## Investigate:
+### Hellmanns BBQ and Grilling Sauces: share of 5 star going down
+### Knorr Boullions Going up 
+### Hellmanns Ketchup and Tomato Sauce: share of 5 star varying a lot 
+
+plot_fivestar_evolution_per_category_per_brand <-
+  ggplot(AmazonReviews, aes(x = Date, y = Fivestars)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  facet_grid(Category ~ Brand, scales = "free_y", space = "free") +
+  labs(x = "Month", y = "Share of 5 Star Ratings",
+       title = "Evolution of the Share of 5 Star Ratings over Time per Category per Brand") +
+  theme_bw() +
+  scale_x_date(date_labels = "%Y", date_breaks = "24 months")
+
+ggsave("plot_fivestar_evolution_per_category_per_brand.png",
+       plot_fivestar_evolution_per_category_per_brand,
+       width = 10, height = 6)
+
+
+# One star rating evolution per category per brand
+## Investigate:
+### 1) Hellmann's BBQ and Grilling Sauces: share of 1 star going up 
+### 2) Knorr Naturlich Lecker! (N??): share of 1 star going up
+### 3) Hellmanns Mustard: share of 1 star going DOWN
+plot_onestar_evolution_per_category_per_brand <-
+  ggplot(AmazonReviews, aes(x = Date, y = Onestar)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  facet_grid(Category ~ Brand, scales = "free_y", space = "free") +
+  labs(x = "Month", y = "Share of 1 Star Ratings",
+       title = "Evolution of the Share of 1 Star Ratings over Time per Category per Brand") +
+  theme_bw() +
+  scale_x_date(date_labels = "%Y", date_breaks = "24 months")
+
+ggsave("plot_onestar_evolution_per_category_per_brand.png",
+       plot_onestar_evolution_per_category_per_brand,
+       width = 10, height = 6)
+
+```
+
+## Summary
+```{r}
+# create a table of numnber of ratings per brand per category
+AmazonReviews %>%
+  group_by(Brand, Category) %>%
+  summarise(n = n())
+
+```
