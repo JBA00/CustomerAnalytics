@@ -1,0 +1,122 @@
+---
+title: "Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load the libraries & Data
+```{r}
+# clear the environment
+rm(list = ls())
+
+# load the required packages
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(DT)
+library(stringr)
+library(readxl)
+
+# set the working directory
+setwd("./Data")
+
+# load the data
+df <- read_csv("Amazon_categories_final_clean.csv")
+position <- read_xlsx("Average_Product_Positions.xlsx")
+
+#remove GPT_estimate and leave the GPT_estimate_cleaned.
+df <- df %>% select(-GPT_estimated)
+
+# check the unique EAN_UPC of df
+df |> 
+  select(EAN_UPC) |> 
+  distinct() |>
+  nrow()
+
+position |> 
+  select(EAN) |> 
+  distinct() |>
+  nrow()
+
+# lets see how much of these data have the same number
+df |> 
+  select(EAN_UPC) |> 
+  distinct() |> 
+  filter(EAN_UPC %in% position$EAN) |>
+  nrow()
+
+# lets see which are not in each other
+df |> 
+  select(EAN_UPC) |> 
+  distinct() |> 
+  filter(!(EAN_UPC %in% position$EAN))
+# merge df and position on EAN
+```
+
+## Data exploration, transforming
+```{r}
+#DF with percentage of 1,2,3,4,5 Rating per category
+df_Rating <- df %>% 
+  group_by(GPT_estimated_cleaned, Brand) %>% 
+  summarise(perc_1_star = sum(Rating == 1)/n(),
+            perc_2_star = sum(Rating == 2)/n(),
+            perc_3_star = sum(Rating == 3)/n(),
+            perc_4_star = sum(Rating == 4)/n(),
+            perc_5_star = sum(Rating == 5)/n()) %>% 
+  gather(key = "Rating", value = "Percentage", -GPT_estimated_cleaned, -Brand)
+
+# change df_rating so that Rating is a column for each GPT_estimated_cleaned
+df_Rating <- df_Rating %>% spread(key = "Rating", value = "Percentage")
+
+# to make the df better lets add the count of each category from the df dataframe
+df_Rating <- df_Rating %>% 
+  left_join(df %>% 
+              group_by(GPT_estimated_cleaned, Brand) %>% 
+              summarise(count = n()), by = c("GPT_estimated_cleaned", "Brand"))
+
+# make a graph for each category with the percentage of 1,2,3,4,5 Rating
+plot_rating_percentage <- function(df, star) {
+    df %>% 
+        ggplot(aes(x = GPT_estimated_cleaned, y = !!sym(paste0("perc_", star, "_star")), fill = count)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        labs(title = paste0("Percentage of ", star, " star rating per category"),
+                 x = "Category",
+                 y = paste0("Percentage of ", star, " star rating")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        scale_fill_gradient(low = "lightblue", high = "darkblue")
+}
+
+plot_rating_percentage(df_Rating, 1)
+plot_rating_percentage(df_Rating, 5)
+
+# to have a closer look at distrubution of rating of a certain category 
+# we can use the following function
+plot_rating_distribution <- function(df, category) {
+    df %>% 
+        filter(GPT_estimated_cleaned == category) %>% 
+        gather(key = "Rating", value = "Percentage", -GPT_estimated_cleaned, -Brand, -count) %>% 
+        ggplot(aes(x = Rating, y = Percentage, fill = Brand)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        labs(title = paste0("Rating distribution of ", category),
+             x = "Rating",
+             y = "Percentage") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+plot_rating_percentage(df_Rating, 1)
+
+```
+
+# now for 1 star
+df_Rating %>% 
+  ggplot(aes(x = GPT_estimated_cleaned, y = perc_1_star, fill = Brand)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Percentage of 1 star rating per category",
+       x = "Category",
+       y = "Percentage of 1 star rating") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
