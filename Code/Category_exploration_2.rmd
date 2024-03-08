@@ -24,8 +24,37 @@ library(readxl)
 
 # Load the Amazon data
 ```{r}
-# read the data from xlsx file:
+# read the data from xlsx file. This file has 5 sheets and all sheets should be put toghether
+# Installeer en laad de readxl bibliotheek
+library(readxl)
+file_path <- "./Data/amazon_reviews1.xlsx"
+
+# Functie om alle bladen van een Excel-bestand te lezen
+read_all_sheets <- function(file_path) {
+  # Krijg de namen van alle bladen in het bestand
+  sheet_names <- excel_sheets(file_path)
+  
+  # Lees elk blad en sla het op in een lijst
+  sheets <- lapply(sheet_names, function(sheet) {
+    read_xlsx(file_path, sheet = sheet)
+  })
+  
+  # Geef de lijst met dataframes terug
+  return(sheets)
+}
+
+# Gebruik de functie om alle bladen van een Excel-bestand te lezen
+all_sheets <- read_all_sheets("C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/amazon_reviews1.xlsx")
+
+# combine all the sheets together in one dataframe
+Amazon <- bind_rows(all_sheets)
+# save the Amazon data to csv
+write.csv(Amazon, file = "C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/Amazon_together.csv")
+
+
 Amazon <- readxl::read_xlsx("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/amazon_reviews_USE_THIS.xlsx")
+
+
 #view(Amazon)
 
 #check the column names
@@ -66,14 +95,10 @@ Amazon <- Amazon %>%
     filter(!is.na(EAN_UPC))
 
 
-#In Amazon data delete duplicates for Text column 
+#In Amazon data delete duplicates for Text column, with date, name and rating the same
 Amazon <- Amazon %>%
-    distinct(Text, .keep_all = TRUE)
+    distinct(Text, Date, Product_name, Rating, .keep_all = TRUE)
 
-Amazon %>%
-    count(Text) %>%
-    filter(n > 1) %>%
-    datatable()
 
 
 # Create Brand column for Hellmans and Knorr
@@ -83,6 +108,7 @@ Amazon <- Amazon %>%
     str_detect(str_to_lower(Product_name), "hellmann's") ~ "Hellmann's",
     TRUE ~ NA_character_
   ))
+
 
 Amazon %>%
   group_by(Brand) %>%
@@ -106,7 +132,7 @@ Amazon <- read.csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s Mac
 # Load the Knorr categories data from ChatGPT
 ```{r}
 # read the csv file and make sure ";" is the delimiter:
-Knorr_categories <- read_csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/unique_products_knorr_GPT.csv", show_col_types = FALSE)
+Knorr_categories <- read_csv("C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/unique_products_knorr_GPT.csv", show_col_types = FALSE)
 view(Knorr_categories)
 
 
@@ -115,12 +141,10 @@ view(Knorr_categories)
 Knorr_categories <- Knorr_categories %>%
     filter(Product_name != "Knorr")
 
-view(Knorr_categories)
-summary(Knorr_categories)
 
 # delete Closest_category column
 Knorr_categories <- Knorr_categories %>%
-    select(-Closest_Category, -Unnamed: 0)
+    select(-Closest_Category)
 
 #change EAN_UPC to numeric
 Knorr_categories$EAN_UPC <- as.numeric(Knorr_categories$EAN_UPC)
@@ -155,7 +179,6 @@ Knorr_categories %>%
     count(EAN_UPC, sort = TRUE)
 
 colnames(Knorr_categories)
-
 #Remove unnamed:0 column
 Knorr_categories <- Knorr_categories %>%
     select(-c(1))
@@ -281,7 +304,7 @@ Amazon_categories_final %>%
 summary(Amazon_categories_final)
 
 #save the Amazon_categories_final data to csv
-#write.csv(Amazon_categories_final, file = "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/Created Datasets/Amazon_categories_final.csv")
+write.csv(Amazon_categories_final, file = "C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/Amazon_categories_final.csv")
 
 #load the Amazon_categories_final data from csv
 Amazon_categories_final <- read.csv("C:/Users/megar/OneDrive/Documenten/GitHub/CustomerAnalytics/Data/Amazon_categories_final.csv")
@@ -335,7 +358,7 @@ Amazon_categories_final %>%
 # lets gather some insight about the categories
 ```{r}
 # lets see how the ratings are distributed over the categories
-Amazon_categories_final %>%
+plot1 <- Amazon_categories_final %>%
     group_by(GPT_estimated_cleaned) %>%
     summarise(mean_rating = mean(Rating, na.rm = TRUE), n = n()) %>%
     arrange(desc(mean_rating)) %>%
@@ -344,6 +367,9 @@ Amazon_categories_final %>%
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
     labs(title = "Mean rating per category", x = "Category", y = "Mean rating", fill = "Number of products")
+
+# output plot to png
+ggsave("./Output/plot1.png", plot1)
 
 # lets see how many 1 star rating and 5 star rating there are, per category based on adjusted by amount of reviews
 Amazon_categories_final %>% 

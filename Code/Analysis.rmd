@@ -24,7 +24,7 @@ library(readxl)
 setwd("./Data")
 
 # load the data
-df <- read_csv("Amazon_categories_final_clean.csv")
+df <- read_csv("Amazon_categories_final.csv")
 position <- read_xlsx("Average_Product_Positions.xlsx")
 
 #remove GPT_estimate and leave the GPT_estimate_cleaned.
@@ -106,17 +106,13 @@ plot_rating_distribution <- function(df, category) {
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 }
 
-plot_rating_percentage(df_Rating, 1)
+# get the names of all the GPT_estimated_cleaned
+categories <- df_Rating %>% 
+  select(GPT_estimated_cleaned) %>% 
+  distinct() %>% 
+  pull()
+categories
 
-```
-
-# now for 1 star
-df_Rating %>% 
-  ggplot(aes(x = GPT_estimated_cleaned, y = perc_1_star, fill = Brand)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "Percentage of 1 star rating per category",
-       x = "Category",
-       y = "Percentage of 1 star rating") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+plot_rating_distribution(df_Rating, categories[15])
 
 ```
