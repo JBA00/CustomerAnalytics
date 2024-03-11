@@ -1,0 +1,35 @@
+data <- read.csv("Amazon_categories_final_clean.csv")
+unique_product_names <- unique(data$Product_name)
+
+#checking if they exist
+specific_name <- "Knorr Taste the World Kartoffel Snack Röstzwiebeln & Croûtons leckeres Kartoffelgericht fertig in nur 5 Minuten 48 g 1 Portion"
+specific_name <- "Knorr Taste the World Reis Snack Chili con Carne Style leckeres Reisgericht fertig in 5 Minuten 8x 57g"
+specific_name <- "Knorr Tomato al Gusto Nudelsosse All' Arrabbiata   370 g"
+
+# Using the %in% operator
+if (specific_name %in% unique_product_names) {
+  print(paste(specific_name, "exists in the list."))
+} else {
+  print(paste(specific_name, "does not exist in the list."))
+}
+
+
+# Seperate data frames
+specific_product63 <- data[data$Product_name == "Knorr Tomato al Gusto Nudelsosse All' Arrabbiata   370 g", ]
+specific_product62 <- data[data$Product_name == "Knorr Taste the World Reis Snack Chili con Carne Style leckeres Reisgericht fertig in 5 Minuten 8x 57g", ]
+specific_product59 <- data[data$Product_name == "Knorr Taste the World Kartoffel Snack Röstzwiebeln & Croûtons leckeres Kartoffelgericht fertig in nur 5 Minuten 48 g 1 Portion", ]
+
+#Translation for 62
+output_file <- "translated_product_data62.csv"
+write.csv2(specific_product62, output_file, row.names = FALSE)
+translate_file(output_file, source_language = "de", target_language = "en")
+
+#Translation for 63
+output_file <- "translated_product_data63.csv"
+write.csv2(specific_product63, output_file, row.names = FALSE)
+translate_file(output_file, source_language = "de", target_language = "en")
+
+#Translation for 59
+output_file <- "translated_product_data59.csv"
+write.csv2(specific_product59, output_file, row.names = FALSE)
+translate_file(output_file, source_language = "de", target_language = "en")
