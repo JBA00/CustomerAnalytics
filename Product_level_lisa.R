@@ -21,17 +21,17 @@ library(ggfortify)
 library(gridExtra)
 library(reshape2)
 library(translateR)
-
-
+library(igraph)
 #open xls file
 amazon <- read_excel("amazon_reviews.xlsx") # all
 Knorr_hellmans <- read_excel("amazon_reviews1.xlsx") # Knorr and Hellmans
 knorr_hellmans_cat <- read.csv("Amazon_categories_final.csv")# Knorr and Hellmans with category
 knorr_hellmans_cat_clean <- read.csv("Amazon_categories_final_clean.csv")# Knorr and Hellmans with category cleaned
+knorr_hellmans_cat_clean_eng <- read.csv("Amazon_categories_final_clean_eng.csv")# Knorr and Hellmans with category cleaned and translated
 
-#-----------------------
-# Cleaning the data
-#-----------------------
+#--------------------------------------------
+# Cleaning the data (AMAZON_CATEGORIES_FINAL) - OLD DONT RUN 
+#--------------------------------------------
 
 #check what is in GPT estimated
 knorr_hellmans_cat$GPT_estimated
@@ -64,14 +64,15 @@ write.csv(knorr_hellmans_cat, "Amazon_categories_final_clean.csv")
 #---------------------------------
 
 #creating some useful variables for in knorr_hellmans_cat_clean
-knorr_hellmans_cat_clean$Fivestars <- as.numeric(knorr_hellmans_cat_clean$Rating == 5) #isolate as new variable
-knorr_hellmans_cat_clean$Onestar <- as.numeric(knorr_hellmans_cat_clean$Rating == 1) #isolate as new variable
-knorr_hellmans_cat_clean$Brand <- factor(knorr_hellmans_cat_clean$Brand) #translate to factor
-knorr_hellmans_cat_clean$Date <- as.Date(knorr_hellmans_cat_clean$Date, format = "%Y-%m-%d") # convert to date variable
-knorr_hellmans_cat_clean$Year <- as.numeric(format(knorr_hellmans_cat_clean$Date, "%Y")) #extract year
-
-knorr_hellmans_cat_clean$Time <- (knorr_hellmans_cat_clean$Year -
-                                    min(knorr_hellmans_cat_clean$Year,na.rm=T)) * 12 + knorr_hellmans_cat_clean$Month
+#change date format
+knorr_hellmans_cat_clean_eng$Date <- as.Date(knorr_hellmans_cat_clean_eng$Date,format = "%Y-%m-%d") #change format
+knorr_hellmans_cat_clean_eng$Month <- as.numeric(format(knorr_hellmans_cat_clean_eng$Date, "%m")) #extract month
+knorr_hellmans_cat_clean_eng$Year <- as.numeric(format(knorr_hellmans_cat_clean_eng$Date, "%Y")) #extract year
+knorr_hellmans_cat_clean_eng$Time <- (knorr_hellmans_cat_clean_eng$Year -
+                                        min(knorr_hellmans_cat_clean_eng$Year,na.rm=T)) * 12 + #counting from when it was first available in dataset
+  knorr_hellmans_cat_clean_eng$Month
+knorr_hellmans_cat_clean_eng$Fivestars <- as.numeric(knorr_hellmans_cat_clean_eng$Rating == 5) #isolate as new variable
+knorr_hellmans_cat_clean_eng$Onestar <- as.numeric(knorr_hellmans_cat_clean_eng$Rating == 1) #isolare as new variable
 
 #--------------------------------
 # Explore knorr_hellmans_cat_clean
@@ -240,7 +241,7 @@ knorr_hellmans_cat_clean$GPT_estimated_cleaned
 #--------------------------------------------------
 
 #filter on GPT_estimated_cleaned == Snacks & Fertiggerichte 
-snacks_fertiggerichte <- subset(knorr_hellmans_cat_clean, GPT_estimated_cleaned == "Snacks & Fertiggerichte")
+snacks_fertiggerichte <- subset(knorr_hellmans_cat_clean_eng, GPT_estimated_cleaned == "Snacks & Fertiggerichte")
 
 #filter out product_names with less than 30 reviews
 snacks_fertiggerichte <- subset(snacks_fertiggerichte, Product_name %in% names(sort(table(snacks_fertiggerichte$Product_name), decreasing = TRUE)[1:30]))
@@ -341,6 +342,7 @@ top_10_lowest_mean_rating <- avg_rating_snacks_fertiggerichte %>%
   #    9 | Asia Noodles Instant Nudeln Beef Taste                       | 3.48   | 190         |
   #    10| Asia Noodles Instant Nudeln Duck Taste                       | 3.48   | 190         |
 
+
 #----------------------------------
 # analyzing 5 star reviews - soups
 #----------------------------------
@@ -371,8 +373,9 @@ wordcloud(soups$text, max.words = 100, random.order = FALSE, colors = brewer.pal
 # pre-processing for translation & text analysis
 #-----------------------------------------------
 
-processed <- textProcessor(knorr_hellmans_cat_clean$Text,
-                           metadata = knorr_hellmans_cat_clean)
+#process chosen category only
+processed <- textProcessor(snacks_fertiggerichte$Review,
+                           metadata = snacks_fertiggerichte,)
     # Building corpus... 
     # Converting to Lower Case... 
     # Removing punctuation... 
@@ -384,9 +387,98 @@ processed <- textProcessor(knorr_hellmans_cat_clean$Text,
 out <- prepDocuments(processed$documents,
                      processed$vocab,
                      processed$meta)
+    # Removing 720 of 4135 terms (720 of 196800 tokens) due to frequency 
+    # Removing 3 Documents with No Words 
+    # Your corpus now has 10671 documents, 3415 terms and 196080 tokens.
 
-    # Removing 16447 of 29264 terms (16447 of 572339 tokens) due to frequency 
-    # Removing 30 Documents with No Words 
-    # Your corpus now has 13252 documents, 12817 terms and 555892 tokens.
+#------------------------------
+# Setting up stm model
+#------------------------------
+
+
+num_topics <- 5
+
+#s() creates non-parametric relationship between rating & prevalence only works for contineous variables
+
+mystm <- stm(
+  documents = out$documents,#all reviews
+  vocab = out$vocab, #all words
+  K = num_topics,
+  prevalence = ~ s(Rating) + s(Time) + Product_name, #regress prevalence of a topic
+  
+  #---
+  # you want to know whether there are specific themes that are associated 
+  # with higher or lower ratings, or with different products or time periods
+  #---
+  max.em.its = 75, #no need to change
+  data = out$meta, #data location
+  init.type = "Spectral", #no need to change
+  verbose = FALSE  #whether you want additional text output
+)
+  #---
+  # prevalence is the proportion of documents in which a topic is present
+  #---
+
+# Most frequent topics by frequency
+plot(mystm, type = "summary", xlim = c(0, 1))
+
+  #---
+  # expected topic propoertion = amount of times you can expect these topics to appear in the reviews
+  #---
+
+# Top words per topic | #FREX: frequent and exclusive, 
+labelTopics(mystm, 1:num_topics)
+
+  #---
+  # based on 5 topics:  
+  #---
+
+# Word cloud per topic
+stm::cloud(mystm, topic = 1)
+
+# Correlation between topics
+plot(topicCorr(mystm))
+
+  #---
+  #based on 5 topics: topic 3 and 1 are related 
+  #---
+
+#figure out how many topics you want VERY SLOW
+findingk <- searchK(
+  out$documents, 
+  out$vocab,
+  K = c(2:3), # select the number of topics among which to find the best number
+  prevalence = ~ s(Rating) + s(Time),
+  # use splines for continuous ones
+  data = out$meta,
+  verbose = FALSE
+)
+plot(findingk)
+
+#See if certain topics drive good or bad ratings
+
+mytopicdta <- make.dt(mystm, out$meta)
+
+# what topic drives good ratings
+formula_good <- paste("Rating ~",
+                 paste0("Topic", 1:num_topics, collapse = " + "))
+myreg_good <- lm(formula, data = mytopicdta)
+stargazer(myreg_good,
+          type = "text")
+stm::cloud(mystm, topic = 3)
+topicLasso(Rating ~ 1,
+           data = out$meta,
+           stmobj = mystm)
+
+# what topic drives bad ratings
+formula_bad <- paste("Onestar ~",
+                 paste0("Topic", 1:num_topics, collapse = " + "))
+myreg_bad <- lm(formula_bad, data = mytopicdta)
+stargazer(myreg_bad,
+          type = "text")
+stm::cloud(mystm, topic = 3)
+topicLasso(Onestar ~ 1,
+           data = out$meta,
+           stmobj = mystm)
 
 
