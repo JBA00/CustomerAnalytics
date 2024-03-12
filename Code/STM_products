@@ -1,0 +1,259 @@
+# clear the environment
+rm(list = ls())
+
+#set working directory
+setwd("C:/Users/LisaJin/Documents/University/CA/Unilever")
+
+#load packages
+library(readxl)
+library(polyglotr)
+library(dplyr)
+library(readr)
+library(tm)
+library(stm)
+library(stargazer)
+library(wordcloud)
+library(tidyr)
+library(ggplot2)
+library(tidyverse)
+library(cluster)
+library(ggfortify)
+library(gridExtra)
+library(reshape2)
+library(translateR)
+library(igraph)
+
+#open xls file
+knorr_hellmans_cat_clean_eng <- read.csv("Amazon_categories_final_clean_eng.csv")# Knorr and Hellmans with category cleaned and translated
+
+#-------------------------------------------------------------------
+#creating some useful variables for in knorr_hellmans_cat_clean_eng
+#-------------------------------------------------------------------
+knorr_hellmans_cat_clean_eng$Date <- as.Date(knorr_hellmans_cat_clean_eng$Date,format = "%Y-%m-%d") #change format
+knorr_hellmans_cat_clean_eng$Month <- as.numeric(format(knorr_hellmans_cat_clean_eng$Date, "%m")) #extract month
+knorr_hellmans_cat_clean_eng$Year <- as.numeric(format(knorr_hellmans_cat_clean_eng$Date, "%Y")) #extract year
+knorr_hellmans_cat_clean_eng$Time <- (knorr_hellmans_cat_clean_eng$Year -
+                                        min(knorr_hellmans_cat_clean_eng$Year,na.rm=T)) * 12 + #counting from when it was first available in dataset
+  knorr_hellmans_cat_clean_eng$Month
+knorr_hellmans_cat_clean_eng$Fivestars <- as.numeric(knorr_hellmans_cat_clean_eng$Rating == 5) #isolate as new variable
+knorr_hellmans_cat_clean_eng$Onestar <- as.numeric(knorr_hellmans_cat_clean_eng$Rating == 1) #isolare as new variable
+#filter on chosen products 
+sweety_milchreis <- subset(knorr_hellmans_cat_clean_eng, Product_name == "Knorr Sweety Milchreis mit Vanillegeschmack, 58 g")
+mac_cheese <- subset(knorr_hellmans_cat_clean_eng, Product_name == "Knorr Taste the World Pasta Snack Mac & Cheese Jalapeño leckere kleine Mahlzeit fertig in nur 5 Minuten 8x 62 g")
+
+#-------------------
+# Sweety Milchreis
+#-------------------
+#----------------------------------
+# pre-processing for text analysis
+#----------------------------------
+
+#process chosen category only
+processed <- textProcessor(sweety_milchreis$Review,
+                           metadata = sweety_milchreis,)
+
+out <- prepDocuments(processed$documents,
+                     processed$vocab,
+                     processed$meta)
+
+    # Removing 181 of 252 terms (181 of 451 tokens) due to frequency 
+    # Removing 1 Documents with No Words 
+    # Your corpus now has 41 documents, 71 terms and 270 tokens.
+    # --> 41 reviews, 71 unique words, 270 words in total
+
+#-----------------------------------------
+# Setting up stm model - sweety_milchreis
+#-----------------------------------------
+
+num_topics <- 4 #officially 8 but choose 4 due to low amount of unique words
+
+#s() creates non-parametric relationship between rating & prevalence only works for contineous variables
+
+mystm <- stm(
+  documents = out$documents,#all reviews
+  vocab = out$vocab, #all words
+  K = num_topics,
+  prevalence = ~ s(Rating) + s(Time), #regress prevalence of a topic
+  
+  #---
+  # you want to know whether there are specific themes that are associated 
+  # with higher or lower ratings, or with different products or time periods
+  #---
+  
+  max.em.its = 75, #no need to change
+  data = out$meta, #data location
+  init.type = "Spectral", #no need to change
+  verbose = FALSE  #whether you want additional text output
+)
+  #---
+  # prevalence is the proportion of documents in which a topic is present
+  #---
+
+# Most frequent topics by frequency
+plot(mystm, type = "summary", xlim = c(0, 1))
+
+  #---
+  # expected topic proportion = amount of times you can expect these topics to appear in the reviews
+  #---
+
+# Top words per topic | #FREX: frequent and exclusive, 
+labelTopics(mystm, 1:num_topics)
+
+# Word cloud per topic
+stm::cloud(mystm, topic = 1)
+
+# Correlation between topics
+plot(topicCorr(mystm))
+
+#figure out how many topics you want VERY SLOW
+#---> look for low semantic coherence
+findingk <- searchK(
+  out$documents, 
+  out$vocab,
+  K = c(2:10), # select the number of topics among which to find the best number
+  prevalence = ~ s(Rating) + s(Time),
+  # use splines for continuous ones
+  data = out$meta,
+  verbose = FALSE
+)
+
+#show plot of findingk
+
+plot(findingk)
+
+#See if certain topics drive good or bad ratings
+
+mytopicdta <- make.dt(mystm, out$meta)
+
+# what topic drives good ratings
+formula_good <- paste("Rating ~",
+                 paste0("Topic", 1:num_topics, collapse = " + "))
+myreg_good <- lm(formula, data = mytopicdta)
+stargazer(myreg_good,
+          type = "text")
+#export table as png
+stargazer(myreg_good, type = "text", out = "4_good_reg_sweety_milchreis.png")
+stm::cloud(mystm, topic = 1)
+topicLasso(Rating ~ 1,
+           data = out$meta,
+           stmobj = mystm)
+
+# what topic drives bad ratings
+formula_bad <- paste("Onestar ~",
+                 paste0("Topic", 1:num_topics, collapse = " + "))
+myreg_bad <- lm(formula_bad, data = mytopicdta)
+stargazer(myreg_bad,
+          type = "text")
+#export table as png
+stargazer(myreg_bad, type = "text", out = "4_bad_reg_sweety_milchreis.png")
+stm::cloud(mystm, topic = 3)
+topicLasso(Onestar ~ 1,
+           data = out$meta,
+           stmobj = mystm)
+
+#--------------
+# Mac & cheese
+#--------------
+
+#-----------------------------------
+# pre-processing for text analysis
+#-----------------------------------
+
+#process chosen category only
+processed <- textProcessor(mac_cheese$Review,
+                           metadata = mac_cheese,)
+
+out <- prepDocuments(processed$documents,
+                     processed$vocab,
+                     processed$meta)
+    # Removing 309 of 532 terms (309 of 1226 tokens) due to frequency 
+    # Your corpus now has 74 documents, 223 terms and 917 tokens.
+    # --> 74 reviews, 223 unique words, 917 words in total
+
+#-----------------------
+# Setting up stm model 
+#-----------------------
+
+num_topics <- 7 #confirmed by findingk
+
+#s() creates non-parametric relationship between rating & prevalence only works for contineous variables
+
+mystm <- stm(
+  documents = out$documents,#all reviews
+  vocab = out$vocab, #all words
+  K = num_topics,
+  prevalence = ~ s(Rating) + s(Time), #regress prevalence of a topic
+  
+  #---
+  # you want to know whether there are specific themes that are associated 
+  # with higher or lower ratings, or with different products or time periods
+  #---
+  
+  max.em.its = 75, #no need to change
+  data = out$meta, #data location
+  init.type = "Spectral", #no need to change
+  verbose = FALSE  #whether you want additional text output
+)
+#---
+# prevalence is the proportion of documents in which a topic is present
+#---
+
+# Most frequent topics by frequency
+plot(mystm, type = "summary", xlim = c(0, 1))
+
+#---
+# expected topic proportion = amount of times you can expect these topics to appear in the reviews
+#---
+
+# Top words per topic | #FREX: frequent and exclusive, 
+labelTopics(mystm, 1:num_topics)
+
+# Word cloud per topic
+stm::cloud(mystm, topic = 2)
+
+# Correlation between topics
+plot(topicCorr(mystm))
+
+#figure out how many topics you want VERY SLOW
+#---> look for low semantic coherence
+findingk <- searchK(
+  out$documents, 
+  out$vocab,
+  K = c(2:10), # select the number of topics among which to find the best number
+  prevalence = ~ s(Rating) + s(Time),
+  # use splines for continuous ones
+  data = out$meta,
+  verbose = FALSE
+)
+
+#show plot of findingk
+
+plot(findingk)
+
+#See if certain topics drive good or bad ratings
+
+mytopicdta <- make.dt(mystm, out$meta)
+
+# what topic drives good ratings
+formula_good <- paste("Rating ~",
+                      paste0("Topic", 1:num_topics, collapse = " + "))
+myreg_good <- lm(formula_good, data = mytopicdta)
+stargazer(myreg_good,
+          type = "text")
+#export table in png
+stargazer(myreg_good, type = "text", out = "4_good_reg_mac_cheese.png")
+stm::cloud(mystm, topic = 3)
+topicLasso(Rating ~ 1,
+           data = out$meta,
+           stmobj = mystm)
+
+# what topic drives bad ratings
+formula_bad <- paste("Onestar ~",
+                     paste0("Topic", 1:num_topics, collapse = " + "))
+myreg_bad <- lm(formula_bad, data = mytopicdta)
+stargazer(myreg_bad,
+          type = "text")
+stm::cloud(mystm, topic = 1)
+topicLasso(Onestar ~ 1,
+           data = out$meta,
+           stmobj = mystm)
