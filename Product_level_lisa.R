@@ -22,6 +22,7 @@ library(gridExtra)
 library(reshape2)
 library(translateR)
 library(igraph)
+
 #open xls file
 amazon <- read_excel("amazon_reviews.xlsx") # all
 Knorr_hellmans <- read_excel("amazon_reviews1.xlsx") # Knorr and Hellmans
@@ -370,7 +371,7 @@ soups$text <- as.character(soups$Text)
 wordcloud(soups$text, max.words = 100, random.order = FALSE, colors = brewer.pal(8, "Dark2"))
 
 #-----------------------------------------------
-# pre-processing for translation & text analysis
+# pre-processing for text analysis
 #-----------------------------------------------
 
 #process chosen category only
