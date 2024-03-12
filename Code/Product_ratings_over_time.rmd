@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # Load the data and libraries:
 ```{r} 
 # Load the libraries
+rm(list = ls())
+
 library(stm)
 library(dplyr)
 library(readr)
@@ -56,8 +58,13 @@ AmazonReviews <- AmazonReviews %>%
   mutate(Product_id = cur_group_id()) %>%
   ungroup()
 
+# Save the data
+write_csv(AmazonReviews, "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/AmazonReviews_ENG_12.03.2024.csv")
+AmazonReviews <- read_csv("/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/AmazonReviews_ENG_12.03.2024.csv")
 
+```
 
+```{r}
 Snacks <- AmazonReviews %>%
   filter(Category == "Snacks & Fertiggerichte") %>%
   group_by(Category, Product_name) %>%
@@ -68,7 +75,6 @@ datatable(Snacks[1:100,])
 
 # print unique Product_name for snacks
 unique(Snacks$Product_name)
-
 
 ```
 
@@ -86,16 +92,21 @@ Product_id_and_name <- AmazonReviews %>%
   arrange(Product_id)
 
 # List of products to select
-selected_products <- c("Knorr Speciale al Gusto Nudelsosse Carbonara 370 g", 
-                       "Knorr Sauce Hollandaise 250 ml",    
-                       "Knorr Sauce Hollandaise, 12er Pack (12 x 250 ml)",  
-                       "Knorr Sahne Sauce Carbonara, 1000 g")
+selected_products <- c("Knorr Sweety Milchreis mit Vanillegeschmack, 58 g",
+                        "Knorr Taste the World Pasta Snack Mac & Cheese Jalapeño leckere kleine Mahlzeit fertig in nur 5 Minuten 8x 62 g")
+
+
+# save AmazonReviews
+write_csv(AmazonReviews, "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/AmazonReviews_ENG_12.03.2024.csv")
 
 # Create a separate table for chosen products
 chosen_products <- Product_id_and_name %>%
   filter(str_trim(Product_name) %in% selected_products)
 
 chosen_products
+
+# Save chosen_products
+write_csv(chosen_products, "/Users/stanislawkiryllo/Desktop/Desktop - Stanisław’s MacBook Air - 1/RSM/Customer Analytics/Tutorials : Assignments/Group project/CA_group_project/Unilever/chosen_products.csv")
 
 # Id's of products to selects
 chosen_products$Product_id
@@ -147,135 +158,92 @@ ggsave("Knorr_Hollandaise_250_1_star.png", Knorr_Hollandaise_250_1_star, width =
 
 ```
 
-## Product 2: Knorr Sauce Hollandaise, 12er Pack (12 x 250 ml); ID: 448
+## Product 2: Knorr Sweety Milchreis mit Vanillegeschmack, 58 g: ID: 486
 ```{r}
-# filter for the specific product
-Knorr_Hollandaise_12er <- AmazonReviews %>%
-  filter(Product_id == 448)
+# Filter for the specific product
+Knorr_Sweety_Milchreis <- AmazonReviews %>%
+  filter(Product_id == 486)
 
 # Plot ratings over time for the specific product
-Knorr_Hollandaise_12er_plot <- 
-  ggplot(Knorr_Hollandaise_12er, aes(x = Date, y = Rating)) +
+Knorr_Sweety_Milchreis_plot <- 
+  ggplot(Knorr_Sweety_Milchreis, aes(x = Date, y = Rating)) +
   geom_point(alpha = 0.5) + # Added transparency to points
   geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
   labs(x = "Date", y = "Rating",
-       title = "Evolution of Ratings over Time for Knorr Sauce Hollandaise, 12er Pack (12 x 250 ml)") +
+       title = "Evolution of Ratings over Time for Knorr Sweety Milchreis mit Vanillegeschmack, 58 g") +
   theme_bw() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
 
-ggsave("Knorr_Hollandaise_12er_plot.png", Knorr_Hollandaise_12er_plot, width = 10, height = 6, units = "in", dpi = 300)
+ggsave("Knorr_Sweety_Milchreis_plot.png", Knorr_Sweety_Milchreis_plot, width = 10, height = 6, units = "in", dpi = 300)
 
 # plot 5 star ratings over time for the specific product
-Knorr_Hollandaise_12er_5_star <- 
-  ggplot(Knorr_Hollandaise_12er, aes(x = Date, y = Fivestars)) +
+Knorr_Sweety_Milchreis_5_star <- 
+  ggplot(Knorr_Sweety_Milchreis, aes(x = Date, y = Fivestars)) +
   geom_point(alpha = 0.5) + # Added transparency to points
   geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
   labs(x = "Date", y = "5 Star Rating",
-       title = "Evolution of 5 Star Ratings over Time for Knorr Sauce Hollandaise, 12er Pack (12 x 250 ml)") +
+       title = "Evolution of 5 Star Ratings over Time for Knorr Sweety Milchreis mit Vanillegeschmack, 58 g") +
   theme_bw() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
 
-ggsave("Knorr_Hollandaise_12er_5_star.png", Knorr_Hollandaise_12er_5_star, width = 10, height = 6, units = "in", dpi = 300)
+ggsave("Knorr_Sweety_Milchreis_5_star.png", Knorr_Sweety_Milchreis_5_star, width = 10, height = 6, units = "in", dpi = 300)
 
 # plot 1 star ratings over time for the specific product
-Knorr_Hollandaise_12er_1_star <- 
-  ggplot(Knorr_Hollandaise_12er, aes(x = Date, y = Onestar)) +
+Knorr_Sweety_Milchreis_1_star <- 
+  ggplot(Knorr_Sweety_Milchreis, aes(x = Date, y = Onestar)) +
   geom_point(alpha = 0.5) + # Added transparency to points
   geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
   labs(x = "Date", y = "1 Star Rating",
-       title = "Evolution of 1 Star Ratings over Time for Knorr Sauce Hollandaise, 12er Pack (12 x 250 ml)") +
+       title = "Evolution of 1 Star Ratings over Time for Knorr Sweety Milchreis mit Vanillegeschmack, 58 g") +
   theme_bw() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
 
-ggsave("Knorr_Hollandaise_12er_1_star.png", Knorr_Hollandaise_12er_1_star, width = 10, height = 6, units = "in", dpi = 300)
+ggsave("Knorr_Sweety_Milchreis_1_star.png", Knorr_Sweety_Milchreis_1_star, width = 10, height = 6, units = "in", dpi = 300)
 
 ```
 
-# Carbonara sauces
-## Product 3: Knorr Sahne Sauce Carbonara, 1000 g; ID: 418
+
+
+## Product 3: Knorr Taste the World Pasta Snack Mac & Cheese Jalapeño leckere kleine Mahlzeit fertig in nur 5 Minuten 8x 62 g: ID: 492
 ```{r}
-Knorr_Sahne_Carbonarra <- AmazonReviews %>%
-  filter(Product_id == 418)
+# Filter for the specific product
+Knorr_Taste_the_World <- AmazonReviews %>%
+  filter(Product_id == 492)
 
 # Plot ratings over time for the specific product
-Knorr_Sahne_Carbonarra_plot <- 
-  ggplot(Knorr_Sahne_Carbonarra, aes(x = Date, y = Rating)) +
+Knorr_Taste_the_World_plot <- 
+  ggplot(Knorr_Taste_the_World, aes(x = Date, y = Rating)) +
   geom_point(alpha = 0.5) + # Added transparency to points
   geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
   labs(x = "Date", y = "Rating",
-       title = "Evolution of Ratings over Time for Knorr Sahne Sauce Carbonara, 1000 g") +
+       title = "Evolution of Ratings over Time for Knorr Taste the World Pasta Snack Mac & Cheese Jalapeño leckere kleine Mahlzeit fertig in nur 5 Minuten 8x 62 g") +
   theme_bw() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
 
-ggsave("Knorr_Sahne_Carbonarra_plot.png", Knorr_Sahne_Carbonarra_plot, width = 10, height = 6, units = "in", dpi = 300)
+ggsave("Knorr_Taste_the_World_plot.png", Knorr_Taste_the_World_plot, width = 10, height = 6, units = "in", dpi = 300)
 
 # plot 5 star ratings over time for the specific product
-Knorr_Sahne_Carbonarra_5_star <- 
-  ggplot(Knorr_Sahne_Carbonarra, aes(x = Date, y = Fivestars)) +
+Knorr_Taste_the_World_5_star <- 
+  ggplot(Knorr_Taste_the_World, aes(x = Date, y = Fivestars)) +
   geom_point(alpha = 0.5) + # Added transparency to points
   geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
   labs(x = "Date", y = "5 Star Rating",
-       title = "Evolution of 5 Star Ratings over Time for Knorr Sahne Sauce Carbonara, 1000 g") +
+       title = "Evolution of 5 Star Ratings over Time for Knorr Taste the World Pasta Snack Mac & Cheese Jalapeño leckere kleine Mahlzeit fertig in nur 5 Minuten 8x 62 g") +
   theme_bw() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
 
-ggsave("Knorr_Sahne_Carbonarra_5_star.png", Knorr_Sahne_Carbonarra_5_star, width = 10, height = 6, units = "in", dpi = 300)
+ggsave("Knorr_Taste_the_World_5_star.png", Knorr_Taste_the_World_5_star, width = 10, height = 6, units = "in", dpi = 300)
 
 # plot 1 star ratings over time for the specific product
-Knorr_Sahne_Carbonarra_1_star <- 
-  ggplot(Knorr_Sahne_Carbonarra, aes(x = Date, y = Onestar)) +
+Knorr_Taste_the_World_1_star <- 
+  ggplot(Knorr_Taste_the_World, aes(x = Date, y = Onestar)) +
   geom_point(alpha = 0.5) + # Added transparency to points
   geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
   labs(x = "Date", y = "1 Star Rating",
-       title = "Evolution of 1 Star Ratings over Time for Knorr Sahne Sauce Carbonara, 1000 g") +
+       title = "Evolution of 1 Star Ratings over Time for Knorr Taste the World Pasta Snack Mac & Cheese Jalapeño leckere kleine Mahlzeit fertig in nur 5 Minuten 8x 62 g") +
   theme_bw() +
   scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
 
-ggsave("Knorr_Sahne_Carbonarra_1_star.png", Knorr_Sahne_Carbonarra_1_star, width = 10, height = 6, units = "in", dpi = 300)
-```
-
-## Product 4: Knorr Speciale al Gusto Nudelsosse Carbonara 370 g; ID: 469
-```{r}
-# filter for the specific product
-Knorr_Speciale_Carbonarra <- AmazonReviews %>%
-  filter(Product_id == 469)
-
-# Plot ratings over time for the specific product
-Knorr_Speciale_Carbonarra_plot <- 
-  ggplot(Knorr_Speciale_Carbonarra, aes(x = Date, y = Rating)) +
-  geom_point(alpha = 0.5) + # Added transparency to points
-  geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
-  labs(x = "Date", y = "Rating",
-       title = "Evolution of Ratings over Time for Knorr Speciale al Gusto Nudelsosse Carbonara 370 g") +
-  theme_bw() +
-  scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
-
-ggsave("Knorr_Speciale_Carbonarra_plot.png", Knorr_Speciale_Carbonarra_plot, width = 10, height = 6, units = "in", dpi = 300)
-
-
-# plot 5 star ratings over time for the specific product
-Knorr_Speciale_Carbonarra_5_star <- 
-  ggplot(Knorr_Speciale_Carbonarra, aes(x = Date, y = Fivestars)) +
-  geom_point(alpha = 0.5) + # Added transparency to points
-  geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
-  labs(x = "Date", y = "5 Star Rating",
-       title = "Evolution of 5 Star Ratings over Time for Knorr Speciale al Gusto Nudelsosse Carbonara 370 g") +
-  theme_bw() +
-  scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
-
-ggsave("Knorr_Speciale_Carbonarra_5_star.png", Knorr_Speciale_Carbonarra_5_star, width = 10, height = 6, units = "in", dpi = 300)
-
-# plot 1 star ratings over time for the specific product
-Knorr_Speciale_Carbonarra_1_star <- 
-  ggplot(Knorr_Speciale_Carbonarra, aes(x = Date, y = Onestar)) +
-  geom_point(alpha = 0.5) + # Added transparency to points
-  geom_smooth(method = "loess", color = "blue", se = TRUE) + # Removed standard error shading for clarity
-  labs(x = "Date", y = "1 Star Rating",
-       title = "Evolution of 1 Star Ratings over Time for Knorr Speciale al Gusto Nudelsosse Carbonara 370 g") +
-  theme_bw() +
-  scale_x_date(date_labels = "%Y", date_breaks = "1 year") # Adjusted for more detailed date breaks
-
-ggsave("Knorr_Speciale_Carbonarra_1_star.png", Knorr_Speciale_Carbonarra_1_star, width = 10, height = 6, units = "in", dpi = 300)
-
+ggsave("Knorr_Taste_the_World_1_star.png", Knorr_Taste_the_World_1_star, width = 10, height = 6, units = "in", dpi = 300)
 
 ```
